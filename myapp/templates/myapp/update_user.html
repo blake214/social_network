@@ -1,0 +1,168 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <script>
+        /** loadUser: is an API call to obtain the users data from the server */
+        function loadUser(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    let profile_image = response.UserDetails.profile_image
+                    let user_gallery = response.UserGalleries
+                    let user_statuses = response.UserStatuses
+                    if (profile_image){
+                        document.getElementById("profile_image").src = profile_image
+                    }
+                    if (user_gallery) {
+                        let gallery = document.getElementById('gallery')
+                        let gallery_content = ""
+                        user_gallery.forEach(element => {
+                            gallery_content += "<a href='"+element.gallery_image+"'>"
+                            gallery_content += "<img width='50' height='50' src='"+ element.gallery_image_thumb +"'>"
+                            gallery_content += "</a>"
+                            gallery_content += "<button class='btn btn-danger' name='gallery_button' id='"+element.id+"'>Delete</button>"
+                            gallery_content += "<br>"
+                        })
+                        gallery.innerHTML = gallery_content
+                    }
+                    if (user_statuses) {
+                        let statuses = document.getElementById('statuses')
+                        let statuses_content = ""
+                        user_statuses.forEach(element => {
+                            statuses_content += "<a class='list-group-item list-group-item-action'>" + element.status + "</a>"
+                        })
+                        statuses.innerHTML = statuses_content
+                    }
+                }
+            };
+            req.open("GET", "/api/user/");
+            req.send();
+        }
+    </script>
+    <script>
+        function pageLoader(){
+            loadUser()
+        }
+    </script>
+
+    <h4 class="text-center">Update</h4>
+
+    <p>Statuses:</p>
+    <div id="statuses"></div>
+    <br>
+
+    <p>Add Status:</p>
+    <form id="add_status_form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ user_status_form.as_p }}
+        <input class="btn btn-secondary btn-block" type="submit" value="Submit">
+    </form>
+    <hr>
+
+    <img id="profile_image" class="img-fluid" src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg">
+    <br><br>
+    <form id="update_user_details_form" method="POST" action="/update_user/" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ update_user_form.as_p }}
+        {{ update_user_details_form.as_p }}
+        <input class="btn btn-secondary btn-block" type="submit" value="Update">
+    </form>
+    <hr>
+    
+    <p>Gallery:</p>
+    <div id="gallery"></div>
+    <br>
+    <form id="add_gallery_image_form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ user_galleries_form }}
+        <br>
+        <input class="btn btn-secondary btn-block" type="submit" value="Add Image">
+    </form>
+
+    <script>
+        /** This script adds event listeners for
+         * Adding gallery images
+         * Deleting gallery images
+         * Deleting statuses
+         */
+        document.getElementById('add_gallery_image_form').addEventListener('submit', function(event) {
+            event.preventDefault()
+            const form = event.target;
+            const formData = new FormData(form);
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    location.reload();
+                }
+            };
+            req.open("POST", "/api/user_gallery/");
+            const csrfToken = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send(formData);
+        });
+
+        document.body.addEventListener('click', function(event) {
+            if (event.target.name === 'gallery_button') {
+                const button = event.target;
+                const buttonId = button.id;
+                const req = new XMLHttpRequest();
+                req.onreadystatechange = function(){
+                    if (req.readyState === 4) {
+                        if (req.status === 204){
+                            location.reload();
+                        } else {
+                            console.log("Not deleted")
+                        }   
+                    }
+                };
+                req.open("DELETE", `/api/user_gallery/?gallery_image_id=${buttonId}`);
+                const csrfToken = getCookie('csrftoken');
+                req.setRequestHeader('X-CSRFToken', csrfToken);
+                req.send();
+            } else if (event.target.name === 'status_button') {
+                const button = event.target;
+                const buttonId = button.id;
+                const req = new XMLHttpRequest();
+                req.onreadystatechange = function(){
+                    if (req.readyState === 4) {
+                        if (req.status === 204){
+                            console.log("Successfully deleted")
+                            location.reload();
+                        } else {
+                            console.log("Not deleted")
+                        }   
+                    }
+                };
+                req.open("DELETE", `/api/user_status/?status_id=${buttonId}`);
+                const csrfToken = getCookie('csrftoken');
+                req.setRequestHeader('X-CSRFToken', csrfToken);
+                req.send();
+            }
+        });
+    </script>
+
+    <script>
+        /** This script adds event listeners for creating statuses */
+        document.getElementById('add_status_form').addEventListener('submit', function(event) {
+            event.preventDefault() 
+            const form = event.target;
+            const formData = new FormData(form);
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    location.reload();
+                }
+            };
+            req.open("POST", "/api/user_status/");
+            const csrfToken = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send(formData);
+        });
+    </script>
+    <script>
+        window.onload = pageLoader;
+    </script>
+
+{% endblock %}

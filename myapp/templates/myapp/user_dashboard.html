@@ -1,0 +1,346 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <script>
+        /** loadUser: is an API call to obtain the users data from the server */
+        function loadUser(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    let profile_image = response.UserDetails.profile_image
+                    let user_gallery = response.UserGalleries
+                    let user_statuses = response.UserStatuses
+                    if (profile_image){
+                        document.getElementById("profile_image").src = profile_image
+                    }
+                    if (user_gallery) {
+                        let gallery = document.getElementById('gallery')
+                        let gallery_content = ""
+                        user_gallery.forEach(element => {
+                            gallery_content += "<a class='image_padding' href='"+element.gallery_image+"'>"
+                            gallery_content += "<img width='50' height='50' src='"+ element.gallery_image_thumb +"'>"
+                            gallery_content += "</a>"
+                        })
+                        gallery.innerHTML = gallery_content
+                    }
+                    if (user_statuses) {
+                        let statuses = document.getElementById('statuses')
+                        let statuses_content = ""
+                        user_statuses.forEach(element => {
+                            statuses_content += "<a class='list-group-item list-group-item-action'>" + element.status + "</a>"
+                        })
+                        statuses.innerHTML = statuses_content
+                    }
+                }
+            };
+            req.open("GET", "/api/user/");
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadUserConnectionJunctionRequests: is an API call to obtain the users pending connections against him, being friend requests */
+        function loadUserConnectionJunctionRequests(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    if (response) {
+                        let friend_requests = document.getElementById('friend_requests')
+                        let friend_requests_content = ""
+                        response.forEach(element => {
+                            friend_requests_content += "<div class='row border rounded'>"
+                                friend_requests_content += "<div class='col'><a href='../user_view/?user_id="+ element.user.id +"'>"+element.user.username+"</a></div>"
+                                friend_requests_content += "<div class='col-2'><button class='btn btn-success' name='friend_accept_button' id='"+element.user.id+"'>Accept</button></div>"
+                                friend_requests_content += "<div class='col-2'><button class='btn btn-danger' name='friend_reject_button' id='"+element.id+"'>Reject</button></div>"
+                            friend_requests_content += "</div>"                            
+                        })
+                        friend_requests.innerHTML = friend_requests_content
+                    }
+                }
+            };
+            req.open("GET", "/api/user_connection_junctions_pending/");
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadUserConnectionJunctionApproved: is an API call to obtain the users approved connections / friends */
+        function loadUserConnectionJunctionApproved(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    if (response) {
+                        let friends = document.getElementById('friends')
+                        let friends_content = ""
+                        response.forEach(element => {
+                            if(element.user.id == "{{ user.id }}") {
+                                friends_content += "<a href='../user_view/?user_id="+ element.user_connection.id +"' class='list-group-item list-group-item-action'>" + element.user_connection.username + "</a>"    
+                            }                          
+                        })
+                        friends.innerHTML = friends_content
+                    }
+                }
+            };
+            req.open("GET", "/api/user_connection_junctions_approved/");
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadThreads: is an API call to obtain the threads that are linked to the user */
+        function loadThreads(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    if (response) {
+                        let threads = document.getElementById('threads')
+                        let threads_content = ""
+                        response.forEach(element => {
+                            threads_content += "<a href='../thread/?thread_id="+ element.thread.id + "' class='list-group-item list-group-item-action'>" + element.thread.title + "</a>"
+                        })
+                        threads.innerHTML = threads_content
+                    }
+                }
+            };
+            req.open("GET", "/api/user_thread_junctions/");
+            req.send();
+        }
+    </script>
+
+    <script>
+        function pageLoader(){
+            loadUser()
+            loadThreads()
+            loadUserConnectionJunctionRequests()
+            loadUserConnectionJunctionApproved()
+        }
+    </script>
+    
+    <h4 class="text-center">Dashboard</h4>
+
+    <div class="mw-100 d-flex justify-content-center">
+        <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-secondary active">
+                <input type="radio" name="options" id="dash_board_block_radio" autocomplete="off" checked> Profile
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="options" id="thread_block_radio"> Threads
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="options" id="friend_block_radio"> Friends
+            </label>
+            <label class="btn btn-secondary">
+                <input type="radio" name="options" id="update_radio" autocomplete="off"> Update
+            </label>
+        </div>
+    </div>
+
+    <div id="profile_block">
+        <hr>
+        <img id="profile_image" class="img-fluid" src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg">
+        <br>
+
+        <hr>
+        <p class="font-weight-bold">Details:</p>
+        <div class="container">
+            <div class="row">
+                <div class="col-4">
+                    Username:
+                </div>
+                <div class="col">
+                    {{ user.username }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-4">
+                    Email:
+                </div>
+                <div class="col">
+                    {{ user.email }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-4">
+                    First Name:
+                </div>
+                <div class="col">
+                    {{ user.first_name }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-4">
+                    Last Name:
+                </div>
+                <div class="col">
+                    {{ user.last_name }}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-4">
+                    About Me:
+                </div>
+                <div class="col">
+                    {{ user.UserDetails.about_me|default:"" }}
+                </div>
+            </div>
+        </div>
+
+        <hr>
+        <p class="font-weight-bold">Statuses:</p>
+        <div id="statuses"></div>
+
+        <hr>
+        <p class="font-weight-bold">Gallery:</p>
+        <div id="gallery"></div>
+    </div>
+
+    <div id="thread_block" style="display: none;">
+        <hr>
+        <p class="font-weight-bold">Current Threads</p>
+        <div id="threads"></div>
+
+        <hr>
+        <p class="font-weight-bold">Add New Thread</p>
+        <form id="add_thread_form" method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ thread_form.as_p }}
+            <input class="btn btn-secondary btn-block" type="submit" value="Create">
+        </form>
+    </div>
+
+    <div id="friend_block" style="display: none;">
+        <hr>
+        <p class="font-weight-bold">Current Friends</p>
+        <div id="friends"></div>
+
+        <hr>
+        <p class="font-weight-bold">Friend Requests</p>
+        <div id="friend_requests" class="container"></div>
+    </div>
+
+    <script>
+        /** This script adds an event listener to create a thread */
+        document.getElementById('add_thread_form').addEventListener('submit', function(event) {
+            event.preventDefault()
+            const form = event.target;
+            const formData = new FormData(form);
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    window.location.reload();
+                }
+            };
+            req.open("POST", "/api/thread/");
+            const csrfToken = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send(formData);
+        });
+    </script>
+
+    <script>
+        /** This script adds event listeners to the dashboard navigation bar */
+        const dash_board_block_radio = document.getElementById('dash_board_block_radio');
+        const thread_block_radio = document.getElementById('thread_block_radio');
+        const friend_block_radio = document.getElementById('friend_block_radio');
+        const update_radio = document.getElementById('update_radio');
+
+        const threadBlock = document.getElementById('thread_block');
+        const profileBlock = document.getElementById('profile_block');
+        const friendBlock = document.getElementById('friend_block');
+
+        dash_board_block_radio.addEventListener('change', function() {
+            if (this.checked) {
+                thread_block_radio.checked = false
+                threadBlock.style.display = 'none';
+                friend_block_radio.checked = false
+                friendBlock.style.display = 'none';
+                profileBlock.style.display = 'block';
+            } else {
+                profileBlock.style.display = 'none';
+            }
+        });
+        thread_block_radio.addEventListener('change', function() {
+            if (this.checked) {
+                dash_board_block_radio.checked = false
+                profileBlock.style.display = 'none';
+                friend_block_radio.checked = false
+                friendBlock.style.display = 'none';
+                threadBlock.style.display = 'block';
+            } else {
+                threadBlock.style.display = 'none';
+            }
+        });
+        friend_block_radio.addEventListener('change', function() {
+            if (this.checked) {
+                dash_board_block_radio.checked = false
+                profileBlock.style.display = 'none';
+                thread_block_radio.checked = false
+                threadBlock.style.display = 'none';
+                friendBlock.style.display = 'block';
+            } else {
+                friendBlock.style.display = 'none';
+            }
+        });
+        update_radio.addEventListener('click', function() {
+            window.location.href = "../update_user/";
+        });
+    </script>
+
+    <script>
+        /** This script adds event listeners for
+         * Accepting friend requests
+         * Rejecting friend requests
+         */
+        document.body.addEventListener('click', function(event) {
+            if (event.target.name === 'friend_accept_button') {
+                const button = event.target;
+                const buttonId = button.id;
+                const req = new XMLHttpRequest();
+                req.onreadystatechange = function(){
+                    if (req.readyState === 4) {
+                        if (req.status === 201){
+                            location.reload();
+                        } else if (req.status === 400) {
+                            console.log("Not added")
+                        } else {
+                            console.log("Some error")
+                        }  
+                    }
+                };
+                req.open("POST", `/api/user_connection_junction/`);
+                const csrfToken = getCookie('csrftoken');
+                req.setRequestHeader('X-CSRFToken', csrfToken);
+                const formData = new FormData();
+                formData.append('user_connection', buttonId);
+                req.send(formData);
+            } else if (event.target.name === 'friend_reject_button') {
+                const button = event.target;
+                const buttonId = button.id;
+                const req = new XMLHttpRequest();
+                req.onreadystatechange = function(){
+                    if (req.readyState === 4) {
+                        if (req.status === 204){
+                            location.reload();
+                        } else {
+                            console.log("Not deleted")
+                        }   
+                    }
+                };
+                req.open("DELETE", `/api/user_connection_junction/?user_connection_junction_id=${buttonId}`);
+                const csrfToken = getCookie('csrftoken');
+                req.setRequestHeader('X-CSRFToken', csrfToken);
+                req.send();
+            }
+        });
+    </script>
+
+    <script>
+        window.onload = pageLoader;
+    </script>
+{% endblock %}
+

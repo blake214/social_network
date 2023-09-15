@@ -1,0 +1,189 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <script>
+        /** loadConnection: is an API call to obtain the users connections where the user is the creator / The user invites */
+        function loadConnection(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    let user_connection_junction_id
+                    response.forEach(element => {
+                        if (element.user_connection.id == "{{ viewable_user.id }}"){
+                            user_connection_junction_id = element.id
+                        }
+                    })
+                    if(user_connection_junction_id) {
+                        document.getElementById("delete_user_button").style.display = 'block'
+                    } else {
+                        document.getElementById("add_user_button").style.display = 'block'
+                    }
+                }
+            };
+            req.open("GET", `/api/user_connection_junctions_user/`);
+            const csrfToken = getCookie('csrftoken');
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadUser: is an API call to obtain the users data from the server */
+        function loadUser(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    let profile_image = response.UserDetails.profile_image
+                    let user_gallery = response.UserGalleries
+                    let user_statuses = response.UserStatuses
+                    if (profile_image){
+                        document.getElementById("profile_image").src = profile_image
+                    }
+                    if (user_gallery) {
+                        let gallery = document.getElementById('gallery')
+                        let gallery_content = ""
+                        user_gallery.forEach(element => {
+                            gallery_content += "<a href='"+element.gallery_image+"'>"
+                            gallery_content += "<img width='50' height='50' src='"+ element.gallery_image_thumb +"'>"
+                            gallery_content += "</a>"
+                        })
+                        gallery.innerHTML = gallery_content
+                    }
+                    if (user_statuses) {
+                        let statuses = document.getElementById('statuses')
+                        let statuses_content = ""
+                        user_statuses.forEach(element => {
+                            statuses_content += "<a class='list-group-item list-group-item-action'>" + element.status + "</a>"
+                        })
+                        statuses.innerHTML = statuses_content
+                    }
+                }
+            };
+            let user_id = "{{ viewable_user.id }}";
+            req.open("GET", "/api/user/?user_id=" + user_id);
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** deleteUser: is an API call to remove the user connection to the user */
+        function deleteUser(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    if (req.status === 204){
+                        location.reload();
+                    } else if (req.status === 400) {
+                        console.log("Not deleted")
+                    } else if (req.status === 409) {
+                        console.log("Already friends")
+                    } else {
+                        console.log("Some error")
+                    }
+                }
+            };
+            let user_connection_id = "{{ viewable_user.id }}";
+            req.open("DELETE", `/api/user_connection_junction/?user_connection_id=${user_connection_id}`);
+            const csrfToken = getCookie('csrftoken');
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send();
+        }
+
+        /** addUser: is an API call to add the user connection to the user */
+        function addUser(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    if (req.status === 201){
+                        location.reload();
+                    } else if (req.status === 400) {
+                        console.log("Not added")
+                    } else {
+                        console.log("Some error")
+                    }
+                }
+            };
+            let user_connection_id = "{{ viewable_user.id }}";
+            req.open("POST", `/api/user_connection_junction/`);
+            const csrfToken = getCookie('csrftoken');
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            const formData = new FormData();
+            formData.append('user_connection', user_connection_id);
+            req.send(formData);
+        }
+    </script>
+
+    <script>
+        function pageLoader(){
+            loadUser()
+            loadConnection()
+        }
+    </script>
+
+    <img id="profile_image" class="img-fluid" src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg">
+    <br>
+
+    <hr>
+    <p>Details:</p>
+    <div class="container">
+        <div class="row">
+            <div class="col-4">
+                Username:
+            </div>
+            <div class="col">
+                {{ viewable_user.username }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4">
+                Email:
+            </div>
+            <div class="col">
+                {{ viewable_user.email }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4">
+                First Name:
+            </div>
+            <div class="col">
+                {{ viewable_user.first_name }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4">
+                Last Name:
+            </div>
+            <div class="col">
+                {{ viewable_user.last_name }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4">
+                About Me:
+            </div>
+            <div class="col">
+                {{ viewable_user.UserDetails.about_me }}
+            </div>
+        </div>
+    </div>
+
+    <hr>
+    <p>Statuses:</p>
+    <div id="statuses"></div>
+
+    <hr>
+    <p>Gallery:</p>
+    <div id="gallery"></div>
+    <hr>
+
+    <button class="btn btn-danger btn-block" style="display: none;" id="delete_user_button" onclick="deleteUser()">Remove Connection</button>
+    <button class="btn btn-success btn-block" style="display: none;" id="add_user_button" onclick="addUser()">Add Connection</button>
+
+    <script>
+        window.onload = pageLoader;
+    </script>
+{% endblock %}

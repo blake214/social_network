@@ -1,0 +1,11 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <h4 class="text-center">Login</h4>
+    <form id="login_form" method="POST" action="/login/" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ login_form.as_p }}
+        <input class="btn btn-secondary btn-block" type="submit" name="submit" value="Login">
+    </form>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <script>
+        /** loadConnection: is an API call to obtain the users approved connections / the users friends */
+        function loadConnection(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    let friends_dropdown = document.getElementById('friends_dropdown')
+                    let friends_dropdown_content = ""
+                    response.forEach(element => {
+                        if(element.user_connection.id != parseInt("{{ user.id }}")) {
+                            friends_dropdown_content += "<option value='"+element.user_connection.id+"'>"+element.user_connection.username+"</option>"
+                        }
+                    })
+                    friends_dropdown.innerHTML = friends_dropdown_content
+                }
+            };
+            req.open("GET", `/api/user_connection_junctions_approved/`);
+            const csrfToken = getCookie('csrftoken');
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadUserThreadJunctions: is an API call to obtain users that are associated with the thread */
+        let user_thread_junctions_global = []
+        function loadUserThreadJunctions(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    if (response) {
+                        user_thread_junctions_global = response
+                        let user_thread_junctions = document.getElementById('user_thread_junctions')
+                        let user_thread_junctions_content = ""
+                        response.forEach(element => {
+                            user_thread_junctions_content += "<a class='list-group-item list-group-item-action'>" + element.user.username + "</a>"
+                        })
+                        user_thread_junctions.innerHTML = user_thread_junctions_content
+                    }
+                }
+            };
+            let thread_id = "{{thread.id}}"
+            req.open("GET", `/api/user_thread_junctions/?thread_id=${thread_id}`);
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** deleteUserThreadJunction: is an API call remove a user_thread_junction which is removing a thread from a user */
+        function deleteUserThreadJunction(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    if (req.status === 204){
+                        window.location.href = "../";
+                    } else {
+                        location.reload();
+                    }
+                }
+            };
+            let thread_id;
+            user_thread_junctions_global.forEach(element => {
+                if (element.user.username == "{{user.username}}") {
+                    thread_id = element.id
+                }
+            })
+            req.open("DELETE", `/api/user_thread_junction/?user_thread_junction_id=${thread_id}`);
+            const csrfToken = getCookie('csrftoken');
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send();
+        }
+    </script>
+
+    <script>
+        /** loadThreadMessages: is an API call to obtain the thread messages from the database */
+        function loadThreadMessages(){
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    let response = JSON.parse(req.response)
+                    if (response) {
+                        response.forEach(element => {
+                            document.querySelector('#chat-log').value += (element.message + '\n');
+                        })
+                    }
+                }
+            };
+            let thread_id = "{{thread.id}}"
+            req.open("GET", `/api/thread_messages/?thread_id=${thread_id}`);
+            req.send();
+        }
+    </script>
+
+    <script>
+        function pageLoader(){
+            loadUserThreadJunctions()
+            loadThreadMessages()
+            loadConnection()
+        }
+    </script>
+
+    <h4 class="text-center">{{ thread.title }}</h4>
+
+    <textarea id="chat-log" class="form-control" rows="10" readonly="True" disabled="True"></textarea><br>
+    <input id="chat-message-input" class="form-control" type="text" size="100" placeholder="Your message"><br>
+    <input class="btn btn-secondary btn-block" id="chat-message-submit" type="button" value="Send">
+
+    <hr>
+    <p>Current User:</p>
+    <div id="user_thread_junctions"></div>
+
+    <hr>
+    <p>Add User:</p>
+    <form id="add_user_thread_junction_form" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="friends_dropdown">Choose friend:</label>
+        <select id="friends_dropdown" class="form-control" name="user"></select>
+        <input class="form-control" type="text" style="display: none;" name="thread" value="{{ thread.id }}" readonly="True"><br>
+        <input class="btn btn-secondary btn-block" type="submit" value="Add User">
+    </form>
+
+    <hr>
+    <button class="btn btn-danger btn-block" onclick="deleteUserThreadJunction()">Leave Thread</button> 
+
+    {{ thread.id|json_script:"thread_id" }}
+    <script>
+        /** This script creates a web socket and populates the page with the responses from the socket */
+        const thread_id = JSON.parse(document.getElementById('thread_id').textContent);
+        const chatSocket = new WebSocket('ws://'+ window.location.host+ '/ws/' + thread_id + '/');
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            document.querySelector('#chat-log').value += (data.message + '\n');
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) {
+                document.querySelector('#chat-message-submit').click();
+            }
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.value = '';
+        };
+    </script>
+
+    <script>
+        /** This script adds an event listener to invite friends to a thread */
+        document.getElementById('add_user_thread_junction_form').addEventListener('submit', function(event) {
+            event.preventDefault()
+            const form = event.target;
+            
+            const formData = new FormData(form);
+            const req = new XMLHttpRequest();
+            req.onreadystatechange = function(){
+                if (req.readyState === 4) {
+                    window.location.reload();
+                }
+            };
+            req.open("POST", "/api/user_thread_junction/");
+            const csrfToken = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+            req.setRequestHeader('X-CSRFToken', csrfToken);
+            req.send(formData);
+        });
+    </script>
+
+    <script>
+        window.onload = pageLoader;
+    </script>
+{% endblock %}

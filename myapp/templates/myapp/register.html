@@ -1,0 +1,11 @@
+{% extends "./base.html" %}
+{% load bootstrap4 %}
+
+{% block content %}
+    <h4 class="text-center">Register</h4>
+    <form id="register_form" method="POST" action="/register/" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ register_form.as_p }}
+        <input class="btn btn-secondary btn-block" type="submit" name="submit" value="submit">
+    </form>
+{% endblock %}
